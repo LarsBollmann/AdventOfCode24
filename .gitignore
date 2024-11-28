@@ -1,0 +1,7 @@
+/target
+/output
+.env
+
+data/inputs/*
+data/examples/*
+!.keep
