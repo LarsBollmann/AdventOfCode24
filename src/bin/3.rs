@@ -1,4 +1,4 @@
-use aoc24::input::{get_example, get_input};
+use aoc24::input::{get_input};
 use regex::Regex;
 
 #[derive(Debug, PartialEq, Clone)]
