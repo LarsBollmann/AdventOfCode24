@@ -46,7 +46,7 @@ impl PartialOrd for Page {
     }
 }
 
-fn parse_input(input: &str) -> Vec<Vec<Page>> {
+fn parse_input(input: &str) -> (HashMap<usize, Page>, Vec<Vec<usize>>) {
     let mut pages: HashMap<usize, Page> = HashMap::new();
 
     let mut parts = input.split("\n\n");
@@ -55,73 +55,53 @@ fn parse_input(input: &str) -> Vec<Vec<Page>> {
         if let Some((left, right)) = rule.split_once('|') {
             let left = left.trim().parse().unwrap();
             let right = right.trim().parse().unwrap();
-            if let Some(page) = pages.get_mut(&left) {
-                page.must_be_printed_before.push(right);
-            } else {
-                pages.insert(
-                    left,
-                    Page {
-                        number: left,
-                        must_be_printed_before: vec![right],
-                    },
-                );
-            }
+            pages
+                .entry(left)
+                .or_insert_with(|| Page {
+                    number: left,
+                    must_be_printed_before: vec![],
+                })
+                .must_be_printed_before
+                .push(right);
         }
     });
     let updates = parts.next().unwrap();
     let updates = updates
         .lines()
-        .map(|update| {
-            update
-                .split(',')
-                .map(|num| {
-                    let num = num.parse().unwrap();
-                    pages.entry(num).or_insert_with(|| Page {
-                        number: num,
-                        must_be_printed_before: vec![],
-                    });
-                    num
-                })
-                .collect()
-        })
+        .map(|update| update.split(',').map(|num| num.parse().unwrap()).collect())
         .collect::<Vec<Vec<usize>>>();
 
-    let updates = updates
-        .iter()
-        .map(|update| {
-            update
-                .iter()
-                .map(|num| pages.get(num).unwrap().clone())
-                .collect::<Vec<Page>>()
-        })
-        .collect::<Vec<Vec<Page>>>();
-
-    updates
+    (pages, updates)
 }
 
-fn part_one(updates: &[Vec<Page>]) -> usize {
+fn part_one(pages: &HashMap<usize, Page>, updates: &[Vec<usize>]) -> usize {
     updates
         .iter()
         .filter_map(|update| {
+            let update_pages: Vec<_> = update.iter().map(|num| pages.get(num).unwrap()).collect();
             // Check if update is sorted
-            match update.windows(2).all(|window| window[0] <= window[1]) {
-                true => Some(update[update.len() / 2].number),
+            match update_pages.windows(2).all(|window| window[0] <= window[1]) {
+                true => Some(update_pages[update_pages.len() / 2].number),
                 false => None,
             }
         })
         .sum()
 }
 
-fn part_two(updates: &mut [Vec<Page>]) -> usize {
+fn part_two(pages: &HashMap<usize, Page>, updates: &mut [Vec<usize>]) -> usize {
     updates
         .iter_mut()
         .filter_map(|update| {
+            let mut update_pages: Vec<_> = update
+                .iter()
+                .map(|num| pages.get(num).unwrap().clone())
+                .collect();
             // Check if update is sorted
-            match update.windows(2).all(|window| window[0] <= window[1]) {
+            match update_pages.windows(2).all(|window| window[0] <= window[1]) {
                 true => None,
                 false => {
-                    update.sort();
-                    Some(update[update.len() / 2].number)
+                    update_pages.sort();
+                    Some(update_pages[update_pages.len() / 2].number)
                 }
             }
         })
@@ -130,10 +110,10 @@ fn part_two(updates: &mut [Vec<Page>]) -> usize {
 
 fn main() {
     let input = get_input(5);
-    let updates = parse_input(&input);
+    let (pages, updates) = parse_input(&input);
 
-    println!("Part one: {}", part_one(&updates));
-    println!("Part two: {}", part_two(&mut updates.clone()));
+    println!("Part one: {}", part_one(&pages, &updates));
+    println!("Part two: {}", part_two(&pages, &mut updates.clone()));
 }
 
 #[cfg(test)]
@@ -145,7 +125,7 @@ mod tests {
     fn test_part_one() {
         let input = get_example(5);
         let (pages, updates) = parse_input(&input);
-        let result = part_one(&updates);
+        let result = part_one(&pages, &updates);
         assert_eq!(result, 143);
     }
 
@@ -153,7 +133,7 @@ mod tests {
     fn test_part_two() {
         let input = get_example(5);
         let (pages, mut updates) = parse_input(&input);
-        let result = part_two(&mut updates);
+        let result = part_two(&pages, &mut updates);
         assert_eq!(result, 123);
     }
 }
